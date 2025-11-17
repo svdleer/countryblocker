@@ -520,8 +520,11 @@ class IPdenyControl:
             web_dirs = []
             
             # Find all index.php files that contain "Country Blocker"
-            for pattern in ['/var/www/*/index.php', '/var/www/*/httpdocs/index.php', 
-                           '/home/*/public_html/index.php', '/home/httpd/vhosts/*/httpdocs/index.php']:
+            for pattern in ['/var/www/*/index.php', '/var/www/*/httpdocs/index.php',
+                           '/var/www/*/*/index.php',  # /var/www/html/countryblock/index.php
+                           '/home/*/public_html/index.php', 
+                           '/home/httpd/vhosts/*/httpdocs/index.php',
+                           '/home/httpd/vhosts/*/httpdocs/*/index.php']:  # Plesk subdirectories
                 for php_file in glob.glob(pattern):
                     try:
                         with open(php_file, 'r') as f:
@@ -593,12 +596,12 @@ class IPdenyControl:
         
         # Copy default .htpasswd if .htpasswd.example exists and target doesn't have .htpasswd
         htpasswd_example = os.path.join(source_dir, '.htpasswd.example')
-        htpasswd_target = '/var/www/.htpasswd'
+        htpasswd_target = os.path.join(webroot, '.htpasswd')
         
         if os.path.exists(htpasswd_example) and not os.path.exists(htpasswd_target):
             shutil.copy2(htpasswd_example, htpasswd_target)
             os.chmod(htpasswd_target, 0o640)
-            self.run_command(['chown', f'root:{web_group}', htpasswd_target])
+            self.run_command(['chown', f'{web_user}:{web_group}', htpasswd_target])
             print(f"  ✓ Created default .htpasswd (user: ipdeny, pass: stats)")
             print(f"  ⚠️  WARNING: Change default password with: sudo ipdeny-ctl setup-auth {webroot} ipdeny")
         
@@ -913,8 +916,11 @@ class IPdenyControl:
             web_dirs = []
             
             # Find all index.php files that contain "Country Blocker"
-            for pattern in ['/var/www/*/index.php', '/var/www/*/httpdocs/index.php', 
-                           '/home/*/public_html/index.php', '/home/httpd/vhosts/*/httpdocs/index.php']:
+            for pattern in ['/var/www/*/index.php', '/var/www/*/httpdocs/index.php',
+                           '/var/www/*/*/index.php',  # /var/www/html/countryblock/index.php
+                           '/home/*/public_html/index.php', 
+                           '/home/httpd/vhosts/*/httpdocs/index.php',
+                           '/home/httpd/vhosts/*/httpdocs/*/index.php']:  # Plesk subdirectories
                 for php_file in glob.glob(pattern):
                     try:
                         with open(php_file, 'r') as f:
