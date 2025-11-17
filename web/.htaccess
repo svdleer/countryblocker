@@ -6,7 +6,7 @@
 # Default credentials: ipdeny / stats (CHANGE THESE!)
 AuthType Basic
 AuthName "Country Blocker Dashboard"
-AuthUserFile /var/www/.htpasswd
+AuthUserFile %WEBROOT%/.htpasswd
 Require valid-user
 
 # Security Headers

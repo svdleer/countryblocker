@@ -594,6 +594,17 @@ class IPdenyControl:
                 shutil.copy2(src, dst)
                 print(f"  ✓ Copied {item}")
         
+        # Update .htaccess with correct path
+        htaccess_file = os.path.join(webroot, '.htaccess')
+        if os.path.exists(htaccess_file):
+            with open(htaccess_file, 'r') as f:
+                content = f.read()
+            # Replace placeholder with absolute path
+            content = content.replace('%WEBROOT%', webroot)
+            with open(htaccess_file, 'w') as f:
+                f.write(content)
+            print(f"  ✓ Updated .htaccess with correct path")
+        
         # Copy default .htpasswd if .htpasswd.example exists and target doesn't have .htpasswd
         htpasswd_example = os.path.join(source_dir, '.htpasswd.example')
         htpasswd_target = os.path.join(webroot, '.htpasswd')
