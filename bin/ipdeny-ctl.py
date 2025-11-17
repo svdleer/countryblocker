@@ -631,15 +631,19 @@ class IPdenyControl:
         import pwd
         import os
         
-        # First, check actual owner of parent directory (most reliable for Plesk)
+        # Walk up directory tree to find first existing non-root owned directory
         try:
-            parent_dir = os.path.dirname(webroot) if os.path.isfile(webroot) else webroot
-            if os.path.exists(parent_dir):
-                stat_info = os.stat(parent_dir)
-                owner = pwd.getpwuid(stat_info.st_uid).pw_name
-                # Only use if it's not root
-                if owner != 'root':
-                    return owner
+            check_path = webroot
+            # Keep going up until we find an existing directory
+            while check_path and check_path != '/':
+                if os.path.exists(check_path):
+                    stat_info = os.stat(check_path)
+                    owner = pwd.getpwuid(stat_info.st_uid).pw_name
+                    # Only use if it's not root (found actual user directory)
+                    if owner != 'root':
+                        return owner
+                # Go up one level
+                check_path = os.path.dirname(check_path)
         except:
             pass
         
