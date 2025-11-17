@@ -629,6 +629,19 @@ class IPdenyControl:
     def detect_web_user(self, webroot: str) -> str:
         """Detect appropriate web server user based on path"""
         import pwd
+        import os
+        
+        # First, check actual owner of parent directory (most reliable for Plesk)
+        try:
+            parent_dir = os.path.dirname(webroot) if os.path.isfile(webroot) else webroot
+            if os.path.exists(parent_dir):
+                stat_info = os.stat(parent_dir)
+                owner = pwd.getpwuid(stat_info.st_uid).pw_name
+                # Only use if it's not root
+                if owner != 'root':
+                    return owner
+        except:
+            pass
         
         # Check if it's a Plesk path
         if '/vhosts/' in webroot:
