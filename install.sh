@@ -53,7 +53,11 @@ check_requirements() {
         echo -e "${YELLOW}Warning: python3-venv not found${NC}"
         echo "Installing python3-venv..."
         if command -v apt-get &> /dev/null; then
-            apt-get install -y python3-venv
+            # Detect Python version (e.g., 3.10, 3.11, 3.12)
+            PY_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+            echo "  Detected Python ${PY_VERSION}"
+            # Try version-specific package first, fallback to generic
+            apt-get install -y python${PY_VERSION}-venv || apt-get install -y python3-venv
         elif command -v yum &> /dev/null; then
             yum install -y python3-venv
         fi

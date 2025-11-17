@@ -58,7 +58,15 @@ fi
 if ! command -v python3 &> /dev/null; then
     echo -e "${YELLOW}Installing Python 3...${NC}"
     if command -v apt-get &> /dev/null; then
-        apt-get install -y python3 python3-venv
+        # Detect latest available Python 3 version
+        apt-get update -qq
+        apt-get install -y python3 python3-venv || {
+            # Try version-specific if available
+            PY_PKG=$(apt-cache search '^python3\.[0-9]+-venv$' | tail -1 | cut -d' ' -f1)
+            if [ -n "$PY_PKG" ]; then
+                apt-get install -y python3 $PY_PKG
+            fi
+        }
     elif command -v yum &> /dev/null; then
         yum install -y python3
     fi
