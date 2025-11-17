@@ -1,0 +1,41 @@
+# Country Blocker - Apache Security Configuration
+# Author: Silvester van der Leer (svdleer)
+# Repository: https://github.com/svdleer/countryblocker
+
+# Enable basic authentication
+# Default credentials: ipdeny / stats (CHANGE THESE!)
+AuthType Basic
+AuthName "Country Blocker Dashboard"
+AuthUserFile /var/www/.htpasswd
+Require valid-user
+
+# Security Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "no-referrer"
+    Header set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'none';"
+</IfModule>
+
+# Disable directory listing
+Options -Indexes
+
+# Deny access to sensitive files
+<FilesMatch "^(stats\.json|\.htpasswd|\.git)">
+    Require all denied
+</FilesMatch>
+
+# PHP security settings
+<IfModule mod_php7.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+    php_flag expose_php Off
+</IfModule>
+
+# Force HTTPS (uncomment if SSL is configured)
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTPS} off
+#     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>

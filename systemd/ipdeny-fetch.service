@@ -1,0 +1,27 @@
+[Unit]
+Description=IPdeny IP List Fetcher
+Documentation=https://github.com/yourusername/ipdeny-systemctl-installer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ipdeny-fetcher
+ExecStartPost=/usr/local/bin/ipdeny-firewall-update
+User=root
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/ipdeny /var/log
+
+# Restart policy
+Restart=on-failure
+RestartSec=5m
+
+[Install]
+WantedBy=multi-user.target

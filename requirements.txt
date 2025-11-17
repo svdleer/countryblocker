@@ -1,0 +1,9 @@
+# Python dependencies for ipdeny-fetcher
+# Minimal dependencies for production use
+
+# Core dependencies (stdlib only - no external packages needed)
+# The fetcher uses only Python standard library modules:
+# - urllib.request (HTTP downloads)
+# - subprocess (ipset/iptables commands)
+# - logging (logging)
+# - pathlib (file operations)

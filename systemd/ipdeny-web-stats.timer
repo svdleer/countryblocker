@@ -1,0 +1,11 @@
+[Unit]
+Description=Country Blocker - Update Web Statistics Timer
+Documentation=https://github.com/svdleer/countryblocker
+
+[Timer]
+# Update web statistics every 5 minutes
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

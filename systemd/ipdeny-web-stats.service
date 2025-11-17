@@ -1,0 +1,14 @@
+[Unit]
+Description=Country Blocker - Update Web Statistics
+Documentation=https://github.com/svdleer/countryblocker
+After=network.target ipdeny-fetch.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ipdeny-ctl update-web
+User=root
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

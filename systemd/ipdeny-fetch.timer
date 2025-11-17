@@ -1,0 +1,21 @@
+[Unit]
+Description=IPdeny IP List Fetcher Timer
+Documentation=https://github.com/yourusername/ipdeny-systemctl-installer
+Requires=ipdeny-fetch.service
+
+[Timer]
+# Run daily at 3 AM
+OnCalendar=daily
+OnCalendar=*-*-* 03:00:00
+
+# Run 10 minutes after boot if missed
+OnBootSec=10min
+
+# Persistent across reboots
+Persistent=true
+
+# Randomize start time by up to 1 hour to avoid server load spikes
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target
