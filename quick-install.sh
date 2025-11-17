@@ -141,6 +141,15 @@ echo "Running installer..."
 cd "$INSTALL_DIR"
 bash install.sh
 
+# Enable web stats timer automatically (for quick install)
+echo
+echo "Enabling automatic web statistics updates..."
+if systemctl enable ipdeny-web-stats.timer 2>/dev/null && systemctl start ipdeny-web-stats.timer 2>/dev/null; then
+    echo -e "${GREEN}✓ Web statistics will update automatically every 5 minutes${NC}"
+else
+    echo -e "${YELLOW}Note: Web statistics timer not enabled (can enable manually later)${NC}"
+fi
+
 # Cleanup
 echo
 echo "Cleaning up temporary files..."
