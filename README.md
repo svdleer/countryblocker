@@ -513,6 +513,8 @@ sudo ./examples/apply-firewall-rules.sh show
 
 Country blocking does not apply to the default TCP mail-service ports: SMTP (`25`, `465`, `587`), POP3 (`110`, `995`), and IMAP (`143`, `993`). This exemption only prevents the ipdeny rule from matching these connections; it does **not** add an `ACCEPT` rule, so the rest of your firewall policy remains in force.
 
+**Feature credit:** Johan Korteland / MaxiGraphx.
+
 Adjust `FIREWALL_EXEMPT_TCP_PORTS` in `/etc/ipdeny/ipdeny.conf` to use a smaller port set (for example, `"25 465 587"` for an SMTP-only host), or set it to `""` to apply country blocking to mail ports too. After changing it, run:
 
 ```bash
