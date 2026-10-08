@@ -26,6 +26,8 @@ DEFAULT_CONFIG = {
     'COUNTRIES': '',
     'FIREWALL_ACTION': 'DROP',  # DROP or REJECT
     'FIREWALL_CHAIN': 'INPUT',  # INPUT, FORWARD, or custom
+    # TCP mail ports that bypass country blocking; other firewall rules still apply.
+    'FIREWALL_EXEMPT_TCP_PORTS': '25 465 587 110 995 143 993',
     'FIREWALL_ENABLED': 'true',
     'LOG_LEVEL': 'INFO',
 }
@@ -34,6 +36,9 @@ DEFAULT_CONFIG = {
 class FirewallUpdater:
     def __init__(self, config_file: str = CONFIG_FILE):
         self.config = self.load_config(config_file)
+        self.exempt_tcp_ports = self.parse_exempt_tcp_ports(
+            self.config['FIREWALL_EXEMPT_TCP_PORTS']
+        )
         self.setup_logging()
         self.logger = logging.getLogger(__name__)
         
@@ -102,34 +107,105 @@ class FirewallUpdater:
         
         return ipsets
     
+    @staticmethod
+    def parse_exempt_tcp_ports(value: str) -> List[str]:
+        """Parse a whitespace- or comma-separated TCP port list safely."""
+        ports = []
+        for port in value.replace(',', ' ').split():
+            if not port.isdigit() or not 1 <= int(port) <= 65535:
+                raise ValueError(
+                    'FIREWALL_EXEMPT_TCP_PORTS must contain ports from 1 through 65535'
+                )
+            if port not in ports:
+                ports.append(port)
+
+        if len(ports) > 15:
+            raise ValueError(
+                'FIREWALL_EXEMPT_TCP_PORTS supports at most 15 ports (iptables multiport limit)'
+            )
+        return ports
+
+    def build_rule_command(
+        self, iptables: str, operation: str, chain: str, setname: str, action: str
+    ) -> List[str]:
+        """Build the managed country-blocking rule command."""
+        cmd = [iptables, operation, chain, '-m', 'set', '--match-set', setname, 'src']
+        if self.exempt_tcp_ports:
+            cmd.extend([
+                '-p', 'tcp', '-m', 'multiport', '!', '--dports',
+                ','.join(self.exempt_tcp_ports)
+            ])
+        cmd.extend([
+            '-j', action, '-m', 'comment', '--comment', f'Country blocker: {setname}'
+        ])
+        return cmd
+
     def rule_exists(self, chain: str, setname: str, action: str, ipv6: bool = False) -> bool:
-        """Check if iptables rule exists"""
-        cmd = ['ip6tables' if ipv6 else 'iptables', '-C', chain, '-m', 'set', 
-               '--match-set', setname, 'src', '-j', action, '-m', 'comment',
-               '--comment', f'Country blocker: {setname}']
-        
-        returncode, _, _ = self.run_command(cmd)
-        return returncode == 0
-    
-    def add_rule(self, chain: str, setname: str, action: str, ipv6: bool = False) -> bool:
-        """Add iptables rule"""
+        """Check if the current managed iptables rule exists."""
         iptables = 'ip6tables' if ipv6 else 'iptables'
-        
-        # Check if rule already exists
+        returncode, _, _ = self.run_command(
+            self.build_rule_command(iptables, '-C', chain, setname, action)
+        )
+        return returncode == 0
+
+    def remove_managed_rules_for_set(
+        self, chain: str, setname: str, ipv6: bool = False
+    ) -> bool:
+        """Remove stale managed rules for one ipset before replacing them."""
+        iptables = 'ip6tables' if ipv6 else 'iptables'
+        returncode, stdout, stderr = self.run_command(
+            [iptables, '-L', chain, '-n', '--line-numbers']
+        )
+        if returncode != 0:
+            self.logger.error(
+                f'Failed to list {iptables} rules while replacing {setname}: {stderr}'
+            )
+            return False
+
+        marker = f'Country blocker: {setname}'
+        line_numbers = []
+        for line in stdout.splitlines():
+            parts = line.split()
+            if parts and parts[0].isdigit() and marker in line:
+                line_numbers.append(int(parts[0]))
+
+        for line_number in sorted(line_numbers, reverse=True):
+            returncode, _, stderr = self.run_command(
+                [iptables, '-D', chain, str(line_number)]
+            )
+            if returncode != 0:
+                self.logger.error(
+                    f'Failed to remove stale {iptables} rule for {setname}: {stderr}'
+                )
+                return False
+        return True
+
+    def add_rule(self, chain: str, setname: str, action: str, ipv6: bool = False) -> bool:
+        """Add an iptables rule, replacing an obsolete managed rule if needed."""
+        iptables = 'ip6tables' if ipv6 else 'iptables'
+
         if self.rule_exists(chain, setname, action, ipv6):
             self.logger.debug(f"Rule for {setname} already exists in {iptables}")
             return True
-        
-        # Add rule
-        cmd = [iptables, '-A', chain, '-m', 'set', '--match-set', setname, 'src',
-               '-j', action, '-m', 'comment', '--comment', f'Country blocker: {setname}']
-        
-        returncode, stdout, stderr = self.run_command(cmd)
+
+        # A prior release blocked every port. Remove it (or a changed exemption)
+        # before appending the current rule so mail traffic is no longer matched.
+        if not self.remove_managed_rules_for_set(chain, setname, ipv6):
+            return False
+        cmd = self.build_rule_command(iptables, '-A', chain, setname, action)
+
+        returncode, _, stderr = self.run_command(cmd)
         if returncode != 0:
             self.logger.error(f"Failed to add {iptables} rule for {setname}: {stderr}")
             return False
-        
-        self.logger.info(f"Added {iptables} rule: {setname} -> {action}")
+
+        if self.exempt_tcp_ports:
+            self.logger.info(
+                f"Added {iptables} rule: {setname} -> {action}, excluding TCP ports "
+                f"{','.join(self.exempt_tcp_ports)}"
+            )
+        else:
+            self.logger.info(f"Added {iptables} rule: {setname} -> {action}")
         return True
     
     def remove_orphaned_rules(self, chain: str, active_ipsets: List[str], action: str) -> int:
